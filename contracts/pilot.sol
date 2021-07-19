@@ -1,110 +1,143 @@
 // SPDX-License-Identifier: MIT
+
 pragma solidity >=0.8.6;
 
-import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
-import "./interfaces/IPilot.sol";
+contract Pilot is ERC20 {
+  address public timelock;
 
-contract Pilot is IPilot, AccessControl {
-  address private constant FOUNDATION = 0xAfA13aa8F1b1d89454369c28b0CE1811961A7907;
+  address private _minter;
+  address public constant FOUNDATION = 0xAfA13aa8F1b1d89454369c28b0CE1811961A7907;
 
-  bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+  bytes32 private constant EIP712DOMAIN_HASH =
+    0x8b73c3c69bb8fe3d512ecc4cf759cc79239f7b179b0ffacaa9a75d522b39400f;
 
-  string public constant name = "Pilot Token";
+  bytes32 private constant NAME_HASH =
+    0xbf5bd13a20f5bf0800ee2089e53a178ed2e5611e9703c242c63c882c6ab831d6;
 
-  string public constant symbol = "PILOT";
+  bytes32 private constant VERSION_HASH =
+    0xc89efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bc6;
 
-  uint8 public constant decimals = 18;
+  bytes32 public constant PERMIT_TYPEHASH =
+    0x6e71edae12b1b97f4d1f60370fef10105fa2faae0126114a169c64845d6126c9;
 
-  uint256 public totalSupply;
+  bytes32 public constant TRANSFER_WITH_AUTHORIZATION_TYPEHASH =
+    0x7c7c6cdb67a18743f49ec6fa9b35f50d52ed05cbed4cc592e13b44501c1a2267;
 
   modifier onlyMinter {
-    require(hasRole(MINTER_ROLE, msg.sender), "PILOT :: NOT_MINTER");
+    require(msg.sender == _minter, "PILOT:: NOT_MINTER");
     _;
   }
 
-  mapping(address => uint256) public balanceOf;
+  modifier onlyTimelock {
+    require(msg.sender == timelock, "PILOT:: NOT_TIMELOCK");
+    _;
+  }
 
-  mapping(address => mapping(address => uint256)) public allowances;
+  mapping(address => uint256) public nonces;
 
-  constructor(address _timelock) public {
+  mapping(address => mapping(bytes32 => bool)) public authorizationState;
+
+  event AuthorizationUsed(address indexed authorizer, bytes32 indexed nonce);
+
+  constructor(address _timelock) ERC20("Pilot", "PILOT") {
     _mint(FOUNDATION, 20000000000000000000000000);
-    _setupRole(MINTER_ROLE, _timelock);
+    timelock = _timelock;
   }
 
-  function _mint(address to, uint256 value) internal {
-    totalSupply = totalSupply + value;
-    balanceOf[to] = balanceOf[to] + value;
-    emit Transfer(address(0), to, value);
-  }
-
-  function _burn(address from, uint256 value) internal {
-    balanceOf[from] = balanceOf[from] - value;
-    totalSupply = totalSupply - value;
-    emit Transfer(from, address(0), value);
-  }
-
-  function _approve(
-    address owner,
-    address spender,
-    uint256 value
-  ) private {
-    allowances[owner][spender] = value;
-    emit Approval(owner, spender, value);
-  }
-
-  function _transfer(
-    address from,
-    address to,
-    uint256 value
-  ) private {
-    require(to != address(this) && to != address(0), "PILOT:: INVALID_RECIEVER_ADDRESS");
-    balanceOf[from] = balanceOf[from] - value;
-    balanceOf[to] = balanceOf[to] + value;
-    emit Transfer(from, to, value);
-  }
-
-  function mint(address to, uint256 value) external override onlyMinter returns (bool) {
+  function mint(address to, uint256 value) external onlyMinter returns (bool) {
     _mint(to, value);
     return true;
   }
 
-  function burn(uint256 value) external override returns (bool) {
-    _burn(msg.sender, value);
-    return true;
-  }
-
-  function burnFrom(address account, uint256 amount) external override {
+  function burnFrom(address account, uint256 amount) external {
     uint256 currentAllowance = allowance(account, msg.sender);
-    require(currentAllowance >= amount, "PILOT: BURN_AMOUNT_EXCEEDS_ALLOWANCE");
+    require(currentAllowance >= amount, "ERC20: burn amount exceeds allowance");
     _approve(account, msg.sender, currentAllowance - amount);
     _burn(account, amount);
   }
 
-  function approve(address spender, uint256 value) external override returns (bool) {
-    _approve(msg.sender, spender, value);
-    return true;
+  function updateMinter(address newMinter) external onlyTimelock {
+    require(newMinter != address(0), "PILOT:: INVALID_MINTER_ADDRESS");
+    _minter = newMinter;
   }
 
-  function allowance(address owner, address spender) public view override returns (uint256) {
-    return allowances[owner][spender];
+  function _validateSignedData(
+    address signer,
+    bytes32 encodeData,
+    uint8 v,
+    bytes32 r,
+    bytes32 s
+  ) internal view {
+    bytes32 digest = keccak256(abi.encodePacked("\x19\x01", getDomainSeparator(), encodeData));
+    address recoveredAddress = ecrecover(digest, v, r, s);
+    require(
+      recoveredAddress != address(0) && recoveredAddress == signer,
+      "PILOT:: INVALID_SIGNATURE"
+    );
   }
 
-  function transfer(address to, uint256 value) external override returns (bool) {
-    _transfer(msg.sender, to, value);
-    return true;
+  function permit(
+    address owner,
+    address spender,
+    uint256 value,
+    uint256 deadline,
+    uint8 v,
+    bytes32 r,
+    bytes32 s
+  ) external {
+    require(deadline >= block.timestamp, "PILOT:: AUTH_EXPIRED");
+
+    bytes32 encodeData =
+      keccak256(abi.encode(PERMIT_TYPEHASH, owner, spender, value, nonces[owner], deadline));
+    nonces[owner] = nonces[owner] + 1;
+    _validateSignedData(owner, encodeData, v, r, s);
+    _approve(owner, spender, value);
   }
 
-  function transferFrom(
+  function getDomainSeparator() public view returns (bytes32) {
+    return keccak256(abi.encode(EIP712DOMAIN_HASH, NAME_HASH, VERSION_HASH, address(this)));
+  }
+
+  function getChainId() public view returns (uint256 chainId) {
+    assembly {
+      chainId := chainid()
+    }
+  }
+
+  function transferWithAuthorization(
     address from,
     address to,
-    uint256 value
-  ) external override returns (bool) {
-    uint256 fromAllowance = allowances[from][msg.sender];
-    if (fromAllowance != type(uint256).max) {
-      allowances[from][msg.sender] = fromAllowance - value;
-    }
+    uint256 value,
+    uint256 validAfter,
+    uint256 validBefore,
+    bytes32 nonce,
+    uint8 v,
+    bytes32 r,
+    bytes32 s
+  ) external {
+    require(block.timestamp > validAfter, "PILOT:: AUTH_NOT_YET_VALID");
+    require(block.timestamp < validBefore, "PILOT:: AUTH_EXPIRED");
+    require(!authorizationState[from][nonce], "PILOT:: AUTH_ALREADY_USED");
+
+    bytes32 encodeData =
+      keccak256(
+        abi.encode(
+          TRANSFER_WITH_AUTHORIZATION_TYPEHASH,
+          from,
+          to,
+          value,
+          validAfter,
+          validBefore,
+          nonce
+        )
+      );
+    _validateSignedData(from, encodeData, v, r, s);
+
+    authorizationState[from][nonce] = true;
+    emit AuthorizationUsed(from, nonce);
+
     _transfer(from, to, value);
-    return true;
   }
 }
