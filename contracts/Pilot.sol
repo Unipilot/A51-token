@@ -96,7 +96,10 @@ contract Pilot is ERC20Burnable {
   }
 
   function getDomainSeparator() public view returns (bytes32) {
-    return keccak256(abi.encode(EIP712DOMAIN_HASH, NAME_HASH, VERSION_HASH, address(this)));
+    return
+      keccak256(
+        abi.encode(EIP712DOMAIN_HASH, NAME_HASH, VERSION_HASH, getChainId(), address(this))
+      );
   }
 
   function getChainId() public view returns (uint256 chainId) {
