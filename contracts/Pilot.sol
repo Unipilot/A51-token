@@ -47,19 +47,31 @@ contract Pilot is ERC20Burnable {
 
   event AuthorizationUsed(address indexed authorizer, bytes32 indexed nonce);
 
-  constructor(address _timelock) ERC20("Unipilot", "PILOT") {
+  constructor(
+    address _timelock,
+    address[] memory vestingAddresses,
+    uint256[] memory vestingAmounts
+  ) ERC20("Unipilot", "PILOT") {
     _mint(FOUNDATION, 20000000000000000000000000);
+    _mintToVestors(vestingAddresses, vestingAmounts);
     timelock = _timelock;
   }
 
-  function mint(address to, uint256 value) external onlyMinter returns (bool) {
+  function mint(address to, uint256 value) external onlyMinter {
     _mint(to, value);
-    return true;
   }
 
   function updateMinter(address newMinter) external onlyTimelock {
     require(newMinter != address(0), "PILOT:: INVALID_MINTER_ADDRESS");
     _minter = newMinter;
+  }
+
+  function _mintToVestors(address[] memory _vestingAddresses, uint256[] memory _vestingAmounts)
+    internal
+  {
+    for (uint256 i = 0; i < _vestingAddresses.length; i++) {
+      _mint(_vestingAddresses[i], _vestingAmounts[i]);
+    }
   }
 
   function _validateSignedData(
