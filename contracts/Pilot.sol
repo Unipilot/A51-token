@@ -15,9 +15,9 @@ contract Pilot is ERC20Burnable {
   bytes32 private constant EIP712DOMAIN_HASH =
     0x8b73c3c69bb8fe3d512ecc4cf759cc79239f7b179b0ffacaa9a75d522b39400f;
 
-  // bytes32 private constant NAME_HASH = keccak256("Pilot")
+  // bytes32 private constant NAME_HASH = keccak256("Unipilot")
   bytes32 private constant NAME_HASH =
-    0xbf5bd13a20f5bf0800ee2089e53a178ed2e5611e9703c242c63c882c6ab831d6;
+    0x96f8699b9d60ee03e2ae096e7ed75448335015f6b0f67e4f1540d650607f9ed9;
 
   // bytes32 private constant VERSION_HASH = keccak256("1")
   bytes32 private constant VERSION_HASH =
