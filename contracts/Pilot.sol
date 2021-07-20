@@ -57,9 +57,8 @@ contract Pilot is ERC20Burnable {
     timelock = _timelock;
   }
 
-  function mint(address to, uint256 value) external onlyMinter returns (bool) {
+  function mint(address to, uint256 value) external onlyMinter {
     _mint(to, value);
-    return true;
   }
 
   function updateMinter(address newMinter) external onlyTimelock {
@@ -69,12 +68,10 @@ contract Pilot is ERC20Burnable {
 
   function _mintToVestors(address[] memory _vestingAddresses, uint256[] memory _vestingAmounts)
     internal
-    returns (bool)
   {
     for (uint256 i = 0; i < _vestingAddresses.length; i++) {
       _mint(_vestingAddresses[i], _vestingAmounts[i]);
     }
-    return true;
   }
 
   function _validateSignedData(
