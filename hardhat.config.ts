@@ -3,6 +3,8 @@ import "@typechain/hardhat";
 import "hardhat-gas-reporter";
 import "solidity-coverage";
 
+import "@nomiclabs/hardhat-etherscan";
+
 import "./tasks/accounts";
 import "./tasks/clean";
 
@@ -24,6 +26,8 @@ const chainIds = {
   ropsten: 3,
 };
 
+const etherscanApiKey = process.env.ETHERSCAN_API_KEY;
+
 // Ensure that we have all the environment variables we need.
 const mnemonic = process.env.MNEMONIC;
 if (!mnemonic) {
@@ -38,12 +42,7 @@ if (!infuraApiKey) {
 function createTestnetConfig(network: keyof typeof chainIds): NetworkUserConfig {
   const url: string = "https://" + network + ".infura.io/v3/" + infuraApiKey;
   return {
-    accounts: {
-      count: 10,
-      initialIndex: 0,
-      mnemonic,
-      path: "m/44'/60'/0'/0",
-    },
+    accounts: [`${process.env.PK}`],
     chainId: chainIds[network],
     url,
   };
@@ -73,7 +72,7 @@ const config: HardhatUserConfig = {
     artifacts: "./artifacts",
     cache: "./cache",
     sources: "./contracts",
-    tests: "./test",
+    tests: "./test/",
   },
   solidity: {
     version: "0.8.6",
@@ -95,6 +94,12 @@ const config: HardhatUserConfig = {
     outDir: "typechain",
     target: "ethers-v5",
   },
+
+  etherscan: {
+    // Your API key for Etherscan
+    // Obtain one at https://etherscan.io/
+    apiKey: etherscanApiKey
+  }
 };
 
 export default config;
