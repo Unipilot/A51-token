@@ -24,6 +24,8 @@ const chainIds = {
   mainnet: 1,
   rinkeby: 4,
   ropsten: 3,
+  mumbai: 80001,
+  polygon: 137,
 };
 
 const etherscanApiKey = process.env.ETHERSCAN_API_KEY;
@@ -63,10 +65,13 @@ const config: HardhatUserConfig = {
       },
       chainId: chainIds.hardhat,
     },
-    goerli: createTestnetConfig("goerli"),
     kovan: createTestnetConfig("kovan"),
+    goerli: createTestnetConfig("goerli"),
+    mumbai: createTestnetConfig("mumbai"),
+    polygon: createTestnetConfig("polygon"),
     rinkeby: createTestnetConfig("rinkeby"),
     ropsten: createTestnetConfig("ropsten"),
+
   },
   paths: {
     artifacts: "./artifacts",
