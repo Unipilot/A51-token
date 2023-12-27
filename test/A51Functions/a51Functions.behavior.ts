@@ -35,6 +35,12 @@ export async function shouldBehaveLikeA51Functions(
       expect(await a51Token.totalSupply()).to.be.equal(parseUnits("5000", "18"));
     });
 
+    it("Validates total supply after burn", async () => {
+      await a51Token.burn(parseUnits("1000", "18"));
+
+      expect(await a51Token.totalSupply()).to.be.equal(parseUnits("4000", "18"));
+    });
+
     it("Validates name hash", async () => {
       expect(keccak256(toUtf8Bytes("A51 Finance"))).to.be.equal(NAME_HASH);
     });
