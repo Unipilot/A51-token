@@ -12,7 +12,6 @@ async function main(): Promise<void> {
   const [wallet] = await ethers.getSigners();
   const A51: ContractFactory = await ethers.getContractFactory("A51");
 
-  const timelockAddr = "0x43D964B802c2Ce187653F6A01D6678E6cA0DC9Bb"
 
   let vestingAddresses: string[] = [
     "0x8eeFB7A090D1D8Caea8860eb8A6B8d1A2e28Da85",
@@ -41,7 +40,6 @@ async function main(): Promise<void> {
   await hre.run("verify:verify", {
     address: a51.address,
     constructorArguments: [
-      timelockAddr,
       vestingAddresses,
       vestingAmounts
     ],
