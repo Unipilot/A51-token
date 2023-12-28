@@ -36,6 +36,8 @@ contract A51 is ERC20Burnable {
   }
 
   function _mintToWallets(address[] memory _accounts, uint256[] memory _amounts) internal {
+    require(_accounts.length == _amounts.length, "A51:: LENGTH_MISMATCH");
+
     for (uint256 i = 0; i < _accounts.length; i++) {
       _mint(_accounts[i], _amounts[i]);
     }
@@ -67,8 +69,9 @@ contract A51 is ERC20Burnable {
   ) external {
     require(deadline >= block.timestamp, "A51:: AUTH_EXPIRED");
 
-    bytes32 encodeData =
-      keccak256(abi.encode(PERMIT_TYPEHASH, owner, spender, value, nonces[owner], deadline));
+    bytes32 encodeData = keccak256(
+      abi.encode(PERMIT_TYPEHASH, owner, spender, value, nonces[owner], deadline)
+    );
     nonces[owner] = nonces[owner] + 1;
     _validateSignedData(owner, encodeData, v, r, s);
     _approve(owner, spender, value);
@@ -82,9 +85,7 @@ contract A51 is ERC20Burnable {
   }
 
   function getChainId() public view returns (uint256 chainId) {
-    assembly {
-      chainId := chainid()
-    }
+    chainId = block.chainid;
   }
 
   function transferWithAuthorization(
@@ -102,18 +103,17 @@ contract A51 is ERC20Burnable {
     require(block.timestamp > validAfter, "A51:: AUTH_NOT_YET_VALID");
     require(!authorizationState[from][nonce], "A51:: AUTH_ALREADY_USED");
 
-    bytes32 encodeData =
-      keccak256(
-        abi.encode(
-          TRANSFER_WITH_AUTHORIZATION_TYPEHASH,
-          from,
-          to,
-          value,
-          validAfter,
-          validBefore,
-          nonce
-        )
-      );
+    bytes32 encodeData = keccak256(
+      abi.encode(
+        TRANSFER_WITH_AUTHORIZATION_TYPEHASH,
+        from,
+        to,
+        value,
+        validAfter,
+        validBefore,
+        nonce
+      )
+    );
     _validateSignedData(from, encodeData, v, r, s);
 
     authorizationState[from][nonce] = true;
